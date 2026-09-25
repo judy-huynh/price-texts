@@ -1,0 +1,21 @@
+name: Hourly price text
+
+on:
+  schedule:
+    - cron: '7 * * * *'  # :07 past, off the busy top of the hour; script skips non-waking hours
+  workflow_dispatch:
+
+jobs:
+  text:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Send text
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          SMS_TO: ${{ secrets.SMS_TO }}
+        run: python prices.py ${{ github.event_name == 'workflow_dispatch' && '--force' || '' }}
