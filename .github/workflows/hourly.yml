@@ -2,7 +2,7 @@ name: Hourly price text
 
 on:
   schedule:
-    - cron: '7 * * * *'  # :07 past, off the busy top of the hour; script skips non-waking hours
+    - cron: '8 * * * *'  # :08 past, money nrg, off the busy top of the hour; script skips non-waking hours
   workflow_dispatch:
 
 jobs:
