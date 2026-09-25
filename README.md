@@ -14,7 +14,7 @@ It costs nothing to run: no server, no texting service, no paid API.
 
 ## How it works
 
-1. A GitHub Actions schedule runs `prices.py` every hour.
+1. A GitHub Actions schedule runs `prices.py` at 8 minutes past every hour. Running off the top of the hour, when GitHub is busiest, makes late or skipped runs less likely. To change the minute, edit the cron line in `.github/workflows/hourly.yml`.
 2. The script pulls prices from Yahoo Finance, including TQQQ pre-market and after-hours. It works out the change for the day (24 hours for BTC) and for the last hour.
 3. It emails the message through Gmail to T-Mobile's email-to-text address (`<number>@tmomail.net`), and it arrives as a regular SMS.
 
