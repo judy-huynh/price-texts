@@ -45,10 +45,7 @@ def session(meta, t):
     return "closed"
 
 
-def dot(now, then):
-    return "🟢" if now >= then else "🔴"
-
-
+# T-Mobile's gateway strips emoji and non-plain characters, so keep the body plain text
 def build():
     now = datetime.now(ET)
 
@@ -59,21 +56,19 @@ def build():
     detail = [f"{pct(price, base)} today"]
     if tag != "closed":
         detail.append(f"{pct(price, ago(3600))} 1h")
-    if tag:
-        detail.append(tag)
-    tqqq = f"📈 TQQQ  ${price:,.2f}\n{dot(price, base)} {' · '.join(detail)}"
+    tqqq = f"TQQQ ${price:,.2f}{f' ({tag})' if tag else ''}\n{' | '.join(detail)}"
 
     price, ago, _, _ = quote("BTC-USD")
-    day = ago(86400)
-    btc = f"🪙 BTC  ${price:,.0f}\n{dot(price, day)} {pct(price, day)} 24h · {pct(price, ago(3600))} 1h"
+    btc = f"BTC ${price:,.0f}\n{pct(price, ago(86400))} 24h | {pct(price, ago(3600))} 1h"
 
-    return f"{tqqq}\n\n{btc}\n\n{now.strftime('%-I:%M%p').lower()}"
+    # T-Mobile shows the subject as "/ subject /" before the body, so use it as the header
+    return now.strftime("%-I:%M%p").lower(), f"{tqqq}\n\n{btc}"
 
 
-def send(body):
+def send(subject, body):
     user, pw, to = os.environ["GMAIL_USER"], os.environ["GMAIL_APP_PASSWORD"], os.environ["SMS_TO"]
-    msg = MIMEText(body, "plain", "utf-8")
-    msg["From"], msg["To"] = user, to  # no Subject, T-Mobile shows it as "/ /"
+    msg = MIMEText(body)
+    msg["From"], msg["To"], msg["Subject"] = user, to, subject
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
         s.login(user, pw)
         s.sendmail(user, [to], msg.as_string())
@@ -85,7 +80,7 @@ if __name__ == "__main__":
     if not force and not (WAKE_START <= hour < WAKE_END):
         print(f"{hour}:00 ET is outside waking hours, skipping")
         sys.exit(0)
-    body = build()
-    print(body)
+    subject, body = build()
+    print(f"/ {subject} / {body}")
     if "--dry-run" not in sys.argv:
-        send(body)
+        send(subject, body)
