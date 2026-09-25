@@ -45,30 +45,35 @@ def session(meta, t):
     return "closed"
 
 
+def dot(now, then):
+    return "🟢" if now >= then else "🔴"
+
+
 def build():
     now = datetime.now(ET)
-    lines = []
 
     price, ago, meta, t = quote("TQQQ")
     tag = session(meta, t) if now.timestamp() - t < 1800 else "closed"
     # pre-market compares to yesterday's close; otherwise to the prior session's close
     base = meta["regularMarketPrice"] if tag == "pre" else meta["previousClose"]
-    line = f"TQQQ{f' ({tag})' if tag else ''} ${price:,.2f} {pct(price, base)} day"
+    detail = [f"{pct(price, base)} today"]
     if tag != "closed":
-        line += f", {pct(price, ago(3600))} 1h"
-    lines.append(line)
+        detail.append(f"{pct(price, ago(3600))} 1h")
+    if tag:
+        detail.append(tag)
+    tqqq = f"📈 TQQQ  ${price:,.2f}\n{dot(price, base)} {' · '.join(detail)}"
 
     price, ago, _, _ = quote("BTC-USD")
-    lines.append(f"BTC ${price:,.0f} {pct(price, ago(86400))} 24h, {pct(price, ago(3600))} 1h")
+    day = ago(86400)
+    btc = f"🪙 BTC  ${price:,.0f}\n{dot(price, day)} {pct(price, day)} 24h · {pct(price, ago(3600))} 1h"
 
-    lines.append(now.strftime("%-I:%M%p").lower() + " ET")
-    return "\n".join(lines)
+    return f"{tqqq}\n\n{btc}\n\n{now.strftime('%-I:%M%p').lower()}"
 
 
 def send(body):
     user, pw, to = os.environ["GMAIL_USER"], os.environ["GMAIL_APP_PASSWORD"], os.environ["SMS_TO"]
-    msg = MIMEText(body)
-    msg["From"], msg["To"], msg["Subject"] = user, to, ""
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["From"], msg["To"] = user, to  # no Subject, T-Mobile shows it as "/ /"
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
         s.login(user, pw)
         s.sendmail(user, [to], msg.as_string())
