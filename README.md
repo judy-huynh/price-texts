@@ -14,7 +14,7 @@ It costs nothing to run: no server, no texting service, no paid API.
 
 ## How it works
 
-1. A GitHub Actions schedule runs `prices.py` at 8 minutes past every hour. Running off the top of the hour, when GitHub is busiest, makes late or skipped runs less likely. To change the minute, edit the cron line in `.github/workflows/hourly.yml`.
+1. A GitHub Actions schedule tries to run `prices.py` four times an hour (:08, :23, :38, :53). GitHub drops many scheduled runs, so the extra tries raise the odds that at least one gets through. The first run each ET hour sends and saves a marker in the Actions cache, and later runs that hour see the marker and skip. The minutes are the cron lines in `.github/workflows/hourly.yml`.
 2. The script pulls prices from Yahoo Finance, including TQQQ pre-market and after-hours. It works out the change for the day (24 hours for BTC) and for the last hour.
 3. It emails the message through Gmail to T-Mobile's email-to-text address (`<number>@tmomail.net`), and it arrives as a regular SMS.
 
@@ -39,5 +39,6 @@ To change the tickers or the hours, edit `prices.py`. The waking hours are `WAKE
 ## Notes
 
 - Not every carrier has a gateway: AT&T shut its email-to-text gateway down in 2025. T-Mobile works, and Verizon (`vtext.com`) mostly does.
-- GitHub's scheduled runs can arrive a few minutes late, and GitHub occasionally skips one.
+- GitHub's schedule is best effort. On 25-26 Sep 2026 a once-an-hour cron fired only about every 4-5 hours, which is why it now tries four times an hour. If hours still go missing, the reliable fix is an outside timer (like a Cloudflare Worker cron) that triggers the workflow with Run workflow through the API.
+- T-Mobile's gateway can hold a text for hours: one sent at 7:14pm arrived at 10:28pm. The time in the subject is when it was sent.
 - GitHub pauses schedules on public repos after 60 days with no activity. A weekly keepalive workflow prevents that.
