@@ -2,7 +2,11 @@ name: Hourly price text
 
 on:
   schedule:
-    - cron: '8 * * * *'  # :08 past, money nrg, off the busy top of the hour; script skips non-waking hours
+    # GitHub drops and delays scheduled runs, so ask 4x an hour; the cache below sends once per hour
+    - cron: '8 * * * *'  # :08, money nrg
+    - cron: '23 * * * *'
+    - cron: '38 * * * *'
+    - cron: '53 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,12 +14,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Current ET hour
+        id: hour
+        run: echo "key=sent-$(TZ=America/New_York date +%Y%m%d%H)" >> "$GITHUB_OUTPUT"
+      - name: Already sent this hour?
+        id: sent
+        if: github.event_name == 'schedule'
+        uses: actions/cache/restore@v4
+        with:
+          path: .sent
+          key: ${{ steps.hour.outputs.key }}
+          lookup-only: true
       - uses: actions/setup-python@v5
+        if: steps.sent.outputs.cache-hit != 'true'
         with:
           python-version: '3.12'
       - name: Send text
+        if: steps.sent.outputs.cache-hit != 'true'
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           SMS_TO: ${{ secrets.SMS_TO }}
         run: python prices.py ${{ github.event_name == 'workflow_dispatch' && '--force' || '' }}
+      - name: Mark hour as sent
+        if: github.event_name == 'schedule' && steps.sent.outputs.cache-hit != 'true'
+        run: touch .sent
+      - if: github.event_name == 'schedule' && steps.sent.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .sent
+          key: ${{ steps.hour.outputs.key }}
